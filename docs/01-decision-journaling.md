@@ -10,6 +10,23 @@ Next session, it might make the same mistake—or reverse a good decision—beca
 
 Here's a 5-minute fix that changes everything.
 
+## Quick Start (2 minutes)
+
+1. Create `memory/decisions.md` in your workspace
+2. Next time you make a significant decision, append:
+
+```markdown
+## 2026-02-02 — Chose X over Y
+**Why:** [Your reasoning here]
+**Outcome:** _(pending)_
+```
+
+3. That's it. You're decision journaling.
+
+The script below is optional. The habit is what matters.
+
+---
+
 ## The Problem
 
 Agents are stateless between sessions. Every conversation starts fresh. That's fine for remembering facts, but terrible for building judgment.
