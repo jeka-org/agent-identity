@@ -1,54 +1,77 @@
 #!/bin/bash
-# Session Bridging - Generate "previously on..." context brief
-# Usage: ./session-bridge.sh [days]
+# session-bridge.sh — Maintain context continuity across sessions
+# Usage: session-bridge.sh generate|load [--file path]
 
 set -e
 
-DAYS="${1:-3}"
+ACTION="${1:-}"
+BRIDGE_FILE="${MEMORY_DIR:-memory}/session-bridge.md"
 
-# Configure these paths for your setup
-WORKSPACE="${WORKSPACE:-$HOME/.openclaw/workspace}"
-MEMORY_DIR="${MEMORY_DIR:-$WORKSPACE/memory}"
-DECISIONS_FILE="${DECISIONS_FILE:-$MEMORY_DIR/decisions.md}"
-GOALS_FILE="${GOALS_FILE:-$MEMORY_DIR/daily-goals.md}"
-
-echo "# Session Bridge — Recent Context"
-echo ""
-echo "_Generated: $(date -u +'%Y-%m-%d %H:%M UTC')_"
-echo ""
-
-# Scan recent daily memory files
-for i in $(seq 0 $((DAYS-1))); do
-    # Cross-platform date handling
-    if date -v-${i}d +%Y-%m-%d >/dev/null 2>&1; then
-        DATE=$(date -v-${i}d +%Y-%m-%d)  # macOS
-    else
-        DATE=$(date -d "$i days ago" +%Y-%m-%d)  # Linux
-    fi
-    
-    FILE="$MEMORY_DIR/$DATE.md"
-    
-    if [ -f "$FILE" ]; then
-        echo "## $DATE"
-        # Extract structure: headers and bold key points
-        grep -E "^##|^###|^\*\*[A-Z]" "$FILE" 2>/dev/null | head -15 || true
-        echo ""
-    fi
+while [[ $# -gt 1 ]]; do
+  case $2 in
+    --file) BRIDGE_FILE="$3"; shift 2 ;;
+    *) shift ;;
+  esac
 done
 
-# Recent decisions
-if [ -f "$DECISIONS_FILE" ]; then
-    echo "## Recent Decisions"
-    grep "^## [0-9]" "$DECISIONS_FILE" 2>/dev/null | tail -5 || echo "_No decisions logged_"
-    echo ""
-fi
+case "$ACTION" in
+  generate)
+    # Create directory if needed
+    mkdir -p "$(dirname "$BRIDGE_FILE")"
+    
+    TIMESTAMP=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+    
+    cat > "$BRIDGE_FILE" << EOF
+# Session Bridge
+Generated: $TIMESTAMP
 
-# Current goals
-if [ -f "$GOALS_FILE" ]; then
-    echo "## Open Goals"
-    grep "^\- \[ \]" "$GOALS_FILE" 2>/dev/null | head -10 || echo "_No open goals_"
-    echo ""
-fi
+## Recent Context
+<!-- Summarize key context from this session -->
 
-echo "---"
-echo "_Use this context to orient yourself. Don't re-read everything._"
+### What We Were Working On
+
+
+### Key Decisions Made
+
+
+### Open Questions/Blockers
+
+
+### Next Actions
+
+
+## Emotional/Relationship Context
+<!-- Any mood, relationship dynamics, or soft context worth preserving -->
+
+
+---
+*Edit this file before ending session to preserve important context.*
+EOF
+    
+    echo "✓ Session bridge template created at $BRIDGE_FILE"
+    echo "  Edit this file to capture important context before session ends."
+    ;;
+    
+  load)
+    if [[ -f "$BRIDGE_FILE" ]]; then
+      echo "=== SESSION BRIDGE CONTEXT ==="
+      cat "$BRIDGE_FILE"
+      echo "=== END SESSION BRIDGE ==="
+    else
+      echo "No session bridge found at $BRIDGE_FILE"
+      echo "Run 'session-bridge.sh generate' at end of sessions to create one."
+    fi
+    ;;
+    
+  *)
+    echo "Usage: session-bridge.sh generate|load [--file path]"
+    echo ""
+    echo "Commands:"
+    echo "  generate  Create/update session bridge template"
+    echo "  load      Display current session bridge context"
+    echo ""
+    echo "Options:"
+    echo "  --file    Path to bridge file (default: memory/session-bridge.md)"
+    exit 1
+    ;;
+esac

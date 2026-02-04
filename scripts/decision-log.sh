@@ -1,54 +1,78 @@
 #!/bin/bash
-# Decision Journaling - Log decisions with reasoning
-# Usage: ./decision-log.sh "decision" "reasoning" ["context"] ["tags"] [weight]
+# decision-log.sh — Log decisions with reasoning for future reference
+# Usage: decision-log.sh "decision" [--reasoning "why"] [--alternatives "options"] [--confidence high|medium|low]
 
 set -e
 
-DECISION="$1"
-REASONING="$2"
-CONTEXT="${3:-}"
-TAGS="${4:-}"
-WEIGHT="${5:-3}"
+DECISION=""
+REASONING=""
+ALTERNATIVES=""
+CONFIDENCE="medium"
+MEMORY_DIR="${MEMORY_DIR:-memory/decisions}"
 
-# Configure these paths for your setup
-WORKSPACE="${WORKSPACE:-$HOME/.openclaw/workspace}"
-LOG="${DECISION_LOG:-$WORKSPACE/memory/decisions.md}"
+while [[ $# -gt 0 ]]; do
+  case $1 in
+    --reasoning) REASONING="$2"; shift 2 ;;
+    --alternatives) ALTERNATIVES="$2"; shift 2 ;;
+    --confidence) CONFIDENCE="$2"; shift 2 ;;
+    --help)
+      echo "Usage: decision-log.sh \"decision\" [--reasoning \"why\"] [--alternatives \"options\"] [--confidence high|medium|low]"
+      echo ""
+      echo "Log decisions with context for future reference."
+      echo ""
+      echo "Options:"
+      echo "  --reasoning     Why this decision was made"
+      echo "  --alternatives  Other options considered"
+      echo "  --confidence    Confidence level (high/medium/low)"
+      exit 0
+      ;;
+    *) 
+      if [[ -z "$DECISION" ]]; then
+        DECISION="$1"
+      fi
+      shift
+      ;;
+  esac
+done
 
-if [ -z "$DECISION" ] || [ -z "$REASONING" ]; then
-    echo "Usage: decision-log.sh \"decision\" \"reasoning\" [\"context\"] [\"tags\"] [weight]"
-    echo ""
-    echo "Examples:"
-    echo "  ./decision-log.sh \"Use cron instead of heartbeat\" \"Needs exact timing\""
-    echo "  ./decision-log.sh \"Ship now\" \"No reason to wait\" \"Building toolkit\" \"shipping\" 5"
-    exit 1
+if [[ -z "$DECISION" ]]; then
+  echo "Error: Decision text required"
+  echo "Usage: decision-log.sh \"decision\" [--reasoning \"why\"]"
+  exit 1
 fi
 
-TIMESTAMP=$(date -u +"%Y-%m-%d %H:%M UTC")
-DATE=$(date +%Y-%m-%d)
+# Create memory directory if needed
+mkdir -p "$MEMORY_DIR"
 
-# Create log file with header if it doesn't exist
-if [ ! -f "$LOG" ]; then
-    mkdir -p "$(dirname "$LOG")"
-    cat > "$LOG" << 'HEADER'
-# Decision Log
+# Generate filename with timestamp
+TIMESTAMP=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+DATE=$(date -u +"%Y-%m-%d")
+FILENAME="$MEMORY_DIR/$DATE.md"
 
-Significant decisions with reasoning. So future-me knows *why*, not just *what*.
+# Build entry
+ENTRY="## $TIMESTAMP
+
+**Decision:** $DECISION
+"
+
+if [[ -n "$REASONING" ]]; then
+  ENTRY+="**Reasoning:** $REASONING
+"
+fi
+
+if [[ -n "$ALTERNATIVES" ]]; then
+  ENTRY+="**Alternatives considered:** $ALTERNATIVES
+"
+fi
+
+ENTRY+="**Confidence:** $CONFIDENCE
 
 ---
-HEADER
-fi
+"
 
-# Append decision
-{
-    echo ""
-    echo "## $DATE — $DECISION"
-    echo ""
-    echo "**When:** $TIMESTAMP"
-    echo "**Decision:** $DECISION"
-    echo "**Reasoning:** $REASONING"
-    [ -n "$CONTEXT" ] && echo "**Context:** $CONTEXT"
-    [ -n "$TAGS" ] && echo "**Tags:** $TAGS"
-    echo "**Outcome:** _(pending)_"
-} >> "$LOG"
+# Append to daily file
+echo "$ENTRY" >> "$FILENAME"
 
-echo "✓ Decision logged: $DECISION"
+echo "✓ Decision logged to $FILENAME"
+echo "  Decision: $DECISION"
+echo "  Confidence: $CONFIDENCE"
